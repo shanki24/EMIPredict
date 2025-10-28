@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="EMIPredict (Custom Dashboard)", layout="wide")
 
-CSV_PATH = r"/Users/shashankshandilya/Desktop/Data Science/EMIPredict project/emi_prediction_dataset.csv"
+CSV_PATH = r"https://drive.google.com/uc?id=1hRYADxUIJSfe4ITODvdfHhGVq0LR6WfR"
 
 # --- Responsive CSS (safe, minimal) ---
 st.markdown("""
