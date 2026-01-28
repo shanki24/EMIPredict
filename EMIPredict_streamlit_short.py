@@ -88,8 +88,10 @@ def page_predict():
     def left_inputs():
         st.subheader("Inputs")
         salary = st.number_input("Monthly salary (INR)", value=40000, min_value=0)
-        is_stable_job = st.selectbox("Stable employment", [1,0],
-                                    format_func=lambda x: "Yes" if x else "No")
+        is_stable_job = st.selectbox(
+            "Stable employment", [1, 0],
+            format_func=lambda x: "Yes" if x else "No"
+        )
         st.session_state["salary"] = salary
         st.session_state["is_stable_job"] = is_stable_job
 
@@ -108,7 +110,7 @@ def page_predict():
     two_col(left_inputs, right_outputs, 1, 1)
 
 # =========================
-# ✅ FIXED EXPLORE PAGE
+# EXPLORE PAGE (FIXED)
 # =========================
 def page_explore():
     st.header("Interactive EDA (preloaded dataset)")
@@ -137,10 +139,18 @@ def page_explore():
     st.subheader("Numeric column plots")
     col = st.selectbox("Select numeric column", numeric_cols)
 
-    # 🔒 HEAVY PLOTS GATED
+    # 🔧 FIX: Downsample ONLY for line chart
     if st.button("Generate plots"):
         st.write("Line chart")
-        st.line_chart(df[col].ffill())
+
+        MAX_POINTS = 1500  # safe limit for Streamlit charts
+        series = df[col].ffill()
+
+        if len(series) > MAX_POINTS:
+            step = max(1, len(series) // MAX_POINTS)
+            series = series.iloc[::step]
+
+        st.line_chart(series)
 
         st.write("Histogram & Boxplot")
         fig, ax = plt.subplots(1, 2, figsize=(10, 4))
@@ -184,9 +194,11 @@ def page_admin():
         df2 = df.drop(index=idx).reset_index(drop=True)
         buf = io.BytesIO()
         df2.to_csv(buf, index=False)
-        st.download_button("Download updated CSV",
-                           data=buf.getvalue(),
-                           file_name="dataset_updated.csv")
+        st.download_button(
+            "Download updated CSV",
+            data=buf.getvalue(),
+            file_name="dataset_updated.csv"
+        )
 
 # =========================
 # Navigation
