@@ -10,6 +10,17 @@ st.set_page_config(page_title="EMIPredict (Custom Dashboard)", layout="wide")
 
 CSV_PATH = r"https://drive.google.com/uc?id=1hRYADxUIJSfe4ITODvdfHhGVq0LR6WfR"
 
+# Cache CSV loading
+@st.cache_data(show_spinner="Loading dataset...")
+def load_data(path):
+    return pd.read_csv(path)
+
+
+# Cache correlation separately
+@st.cache_data
+def compute_corr(df, cols):
+    return df[cols].corr()
+
 # --- Responsive CSS (safe, minimal) ---
 st.markdown("""
 <style>
@@ -124,23 +135,25 @@ def page_predict():
 def page_explore():
     st.header("Interactive EDA (preloaded dataset)")
     st.write(f"Loading dataset from: `{CSV_PATH}`")
+
     try:
-        df = pd.read_csv(CSV_PATH)
+        df = load_data(CSV_PATH)
     except Exception as e:
         st.error(f"Could not load CSV at the path. Error: {e}")
         return
 
-    # Use expanders to keep the page compact on mobile
+    # --- Preview ---
     with st.expander("Columns & sample rows", expanded=True):
         st.subheader("Columns")
         st.write(list(df.columns))
         st.subheader("Sample rows")
-        st.dataframe(df.head())
+        st.dataframe(df.head(), use_container_width=True)
 
+    # 🚀 FIX: Avoid include='all' (VERY slow)
     with st.expander("Summary stats", expanded=False):
-        st.write(df.describe(include='all'))
+        st.write(df.describe())
 
-    numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
     if not numeric_cols:
         st.info("No numeric columns found to plot.")
         return
@@ -148,29 +161,29 @@ def page_explore():
     st.subheader("Numeric column plots")
     col = st.selectbox("Select numeric column to inspect", numeric_cols)
 
-    # Line chart (responsive by default)
     st.write("Line chart")
-    st.line_chart(df[col].fillna(method='ffill'))
+    st.line_chart(df[col].ffill())
 
     st.write("Histogram & Boxplot")
-    fig, ax = plt.subplots(1,2, figsize=(10,4))
+    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
     ax[0].hist(df[col].dropna(), bins=30)
     ax[0].set_title("Histogram")
     ax[1].boxplot(df[col].dropna(), vert=False)
     ax[1].set_title("Boxplot")
-    st.pyplot(fig)
+    st.pyplot(fig, clear_figure=True)
 
     if len(numeric_cols) > 1:
         st.subheader("Correlation heatmap (numeric features)")
-        corr = df[numeric_cols].corr()
-        fig2, ax2 = plt.subplots(figsize=(6,5))
+        corr = compute_corr(df, numeric_cols)
+
+        fig2, ax2 = plt.subplots(figsize=(6, 5))
         cax = ax2.matshow(corr, vmin=-1, vmax=1)
         ax2.set_xticks(range(len(numeric_cols)))
         ax2.set_yticks(range(len(numeric_cols)))
-        ax2.set_xticklabels(numeric_cols, rotation=45, ha='left')
+        ax2.set_xticklabels(numeric_cols, rotation=45, ha="left")
         ax2.set_yticklabels(numeric_cols)
         fig2.colorbar(cax)
-        st.pyplot(fig2)
+        st.pyplot(fig2, clear_figure=True)
     else:
         st.info("Need at least 2 numeric columns for correlation heatmap.")
 
