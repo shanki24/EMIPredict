@@ -158,32 +158,34 @@ def page_explore():
         st.info("No numeric columns found to plot.")
         return
 
-    st.subheader("Numeric column plots")
+    sst.subheader("Numeric column plots")
     col = st.selectbox("Select numeric column to inspect", numeric_cols)
 
-    st.write("Line chart")
-    st.line_chart(df[col].ffill())
+   if st.button("Generate plots"):
+       st.write("Line chart")
+       st.line_chart(df[col].ffill())
 
-    st.write("Histogram & Boxplot")
-    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-    ax[0].hist(df[col].dropna(), bins=30)
-    ax[0].set_title("Histogram")
-    ax[1].boxplot(df[col].dropna(), vert=False)
-    ax[1].set_title("Boxplot")
-    st.pyplot(fig, clear_figure=True)
+       st.write("Histogram & Boxplot")
+       fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+       ax[0].hist(df[col].dropna(), bins=30)
+       ax[0].set_title("Histogram")
+       ax[1].boxplot(df[col].dropna(), vert=False)
+       ax[1].set_title("Boxplot")
+       st.pyplot(fig, clear_figure=True)
 
-    if len(numeric_cols) > 1:
-        st.subheader("Correlation heatmap (numeric features)")
-        corr = compute_corr(df, numeric_cols)
+    if len(numeric_cols) > 1 and st.button("Show correlation heatmap"):
+    st.subheader("Correlation heatmap (numeric features)")
+    corr = compute_corr(df, numeric_cols)
 
-        fig2, ax2 = plt.subplots(figsize=(6, 5))
-        cax = ax2.matshow(corr, vmin=-1, vmax=1)
-        ax2.set_xticks(range(len(numeric_cols)))
-        ax2.set_yticks(range(len(numeric_cols)))
-        ax2.set_xticklabels(numeric_cols, rotation=45, ha="left")
-        ax2.set_yticklabels(numeric_cols)
-        fig2.colorbar(cax)
-        st.pyplot(fig2, clear_figure=True)
+    fig2, ax2 = plt.subplots(figsize=(6, 5))
+    cax = ax2.matshow(corr, vmin=-1, vmax=1)
+    ax2.set_xticks(range(len(numeric_cols)))
+    ax2.set_yticks(range(len(numeric_cols)))
+    ax2.set_xticklabels(numeric_cols, rotation=45, ha="left")
+    ax2.set_yticklabels(numeric_cols)
+    fig2.colorbar(cax)
+    st.pyplot(fig2, clear_figure=True)
+
     else:
         st.info("Need at least 2 numeric columns for correlation heatmap.")
 
