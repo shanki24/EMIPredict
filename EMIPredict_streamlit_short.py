@@ -110,17 +110,13 @@ def page_predict():
     two_col(left_inputs, right_outputs, 1, 1)
 
 # =========================
-# EXPLORE PAGE (FIXED)
+# EXPLORE PAGE
 # =========================
 def page_explore():
     st.header("Interactive EDA (preloaded dataset)")
     st.write(f"Dataset source: `{CSV_PATH}`")
 
-    try:
-        df = load_data(CSV_PATH)
-    except Exception as e:
-        st.error(f"Failed to load CSV: {e}")
-        return
+    df = load_data(CSV_PATH)
 
     with st.expander("Columns & sample rows", expanded=True):
         st.write("Columns:")
@@ -139,20 +135,13 @@ def page_explore():
     st.subheader("Numeric column plots")
     col = st.selectbox("Select numeric column", numeric_cols)
 
-    # 🔧 FIX: Downsample ONLY for line chart
     if st.button("Generate plots"):
-        st.write("Line chart")
-
-        MAX_POINTS = 1500  # safe limit for Streamlit charts
+        MAX_POINTS = 1500
         series = df[col].ffill()
-
         if len(series) > MAX_POINTS:
-            step = max(1, len(series) // MAX_POINTS)
-            series = series.iloc[::step]
-
+            series = series.iloc[:: max(1, len(series)//MAX_POINTS)]
         st.line_chart(series)
 
-        st.write("Histogram & Boxplot")
         fig, ax = plt.subplots(1, 2, figsize=(10, 4))
         ax[0].hist(df[col].dropna(), bins=30)
         ax[0].set_title("Histogram")
@@ -161,9 +150,7 @@ def page_explore():
         st.pyplot(fig, clear_figure=True)
 
     if len(numeric_cols) > 1 and st.button("Show correlation heatmap"):
-        st.subheader("Correlation heatmap (numeric features)")
         corr = compute_corr(df, numeric_cols)
-
         fig2, ax2 = plt.subplots(figsize=(6, 5))
         cax = ax2.matshow(corr, vmin=-1, vmax=1)
         ax2.set_xticks(range(len(numeric_cols)))
@@ -173,9 +160,16 @@ def page_explore():
         fig2.colorbar(cax)
         st.pyplot(fig2, clear_figure=True)
 
-# -------------------------
+# =========================
+# ✅ MONITORING PAGE (FIX)
+# =========================
 def page_monitoring():
     st.header("MLflow monitoring stub")
+    st.write(
+        "This demo logs to a local MLflow path. "
+        "In production, configure MLFLOW_TRACKING_URI via secrets."
+    )
+
     if st.button("Log demo run"):
         mlflow.set_tracking_uri("file:///tmp/mlruns_demo")
         with mlflow.start_run():
@@ -183,22 +177,47 @@ def page_monitoring():
             mlflow.log_metric("demo_metric", float(np.random.rand()))
         st.success("Demo run logged to MLflow")
 
-# -------------------------
+# =========================
+# ADMIN PAGE
+# =========================
 def page_admin():
-    st.header("Admin — Data management")
+    st.header("Admin — Data management (CRUD)")
     df = load_data(CSV_PATH)
 
-    st.dataframe(df.head())
-    idx = st.number_input("Index to drop", min_value=0, max_value=len(df)-1, value=0)
-    if st.button("Drop row"):
-        df2 = df.drop(index=idx).reset_index(drop=True)
-        buf = io.BytesIO()
-        df2.to_csv(buf, index=False)
-        st.download_button(
-            "Download updated CSV",
-            data=buf.getvalue(),
-            file_name="dataset_updated.csv"
-        )
+    st.dataframe(df, use_container_width=True)
+
+    st.subheader("CREATE — Add new row")
+    with st.form("create_row"):
+        new_row = {col: st.text_input(col) for col in df.columns}
+        if st.form_submit_button("Add Row"):
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            st.success("Row added")
+
+    st.subheader("UPDATE — Modify row")
+    idx_update = st.number_input("Row index to update", 0, len(df)-1, 0)
+    with st.form("update_row"):
+        updated = {
+            col: st.text_input(col, value=str(df.loc[idx_update, col]))
+            for col in df.columns
+        }
+        if st.form_submit_button("Update Row"):
+            for col in df.columns:
+                df.loc[idx_update, col] = updated[col]
+            st.success("Row updated")
+
+    st.subheader("DELETE — Remove row")
+    idx_delete = st.number_input("Row index to delete", 0, len(df)-1, 0)
+    if st.button("Delete Row"):
+        df = df.drop(index=idx_delete).reset_index(drop=True)
+        st.success("Row deleted")
+
+    buf = io.BytesIO()
+    df.to_csv(buf, index=False)
+    st.download_button(
+        "Download CSV",
+        data=buf.getvalue(),
+        file_name="dataset_updated.csv"
+    )
 
 # =========================
 # Navigation
